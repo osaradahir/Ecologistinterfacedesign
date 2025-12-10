@@ -1,85 +1,48 @@
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Package, Calendar, MapPin, TrendingUp, Filter } from 'lucide-react';
-import { useState } from 'react';
+import { solicitudesService } from '../../services/solicitudes.service';
+import type { Solicitud } from '../../types';
 
 interface MobileHistoryProps {
   onNavigate: (view: string) => void;
 }
 
-const historyData = [
-  {
-    id: '1',
-    type: 'Plástico',
-    icon: '♻️',
-    date: '2025-12-09',
-    time: '10:30 AM',
-    address: 'Av. Principal 123',
-    weight: '15 kg',
-    status: 'Completado',
-    co2Saved: '4.2 kg',
-  },
-  {
-    id: '2',
-    type: 'Papel',
-    icon: '📄',
-    date: '2025-12-08',
-    time: '2:15 PM',
-    address: 'Av. Principal 123',
-    weight: '8 kg',
-    status: 'Completado',
-    co2Saved: '2.8 kg',
-  },
-  {
-    id: '3',
-    type: 'Cartón',
-    icon: '📦',
-    date: '2025-12-06',
-    time: '11:00 AM',
-    address: 'Av. Principal 123',
-    weight: '22 kg',
-    status: 'Completado',
-    co2Saved: '6.5 kg',
-  },
-  {
-    id: '4',
-    type: 'Vidrio',
-    icon: '🍾',
-    date: '2025-12-04',
-    time: '3:45 PM',
-    address: 'Av. Principal 123',
-    weight: '12 kg',
-    status: 'Completado',
-    co2Saved: '3.1 kg',
-  },
-  {
-    id: '5',
-    type: 'Plástico',
-    icon: '♻️',
-    date: '2025-12-02',
-    time: '9:20 AM',
-    address: 'Av. Principal 123',
-    weight: '18 kg',
-    status: 'Completado',
-    co2Saved: '5.0 kg',
-  },
-  {
-    id: '6',
-    type: 'Papel',
-    icon: '📄',
-    date: '2025-11-30',
-    time: '1:30 PM',
-    address: 'Av. Principal 123',
-    weight: '10 kg',
-    status: 'Completado',
-    co2Saved: '3.5 kg',
-  },
-];
+const tipoIcons: Record<string, string> = {
+  'Plástico': '♻️',
+  'Papel': '📄',
+  'Cartón': '📦',
+  'Vidrio': '🍾',
+  'Orgánico': '🌿',
+};
 
 export function MobileHistory({ onNavigate }: MobileHistoryProps) {
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState('all');
 
-  const totalWeight = historyData.reduce((sum, item) => sum + parseFloat(item.weight), 0);
-  const totalCO2 = historyData.reduce((sum, item) => sum + parseFloat(item.co2Saved), 0);
+  useEffect(() => {
+    loadSolicitudes();
+  }, []);
+
+  const loadSolicitudes = async () => {
+    try {
+      const data = await solicitudesService.getSolicitudes();
+      setSolicitudes(data);
+    } catch (error) {
+      console.error('Error loading solicitudes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredSolicitudes = selectedFilter === 'all'
+    ? solicitudes
+    : solicitudes.filter(s => s.tipo_residuo?.descripcion === selectedFilter);
+
+  const completedCount = solicitudes.filter(s => s.estado === 'completed').length;
+  const totalWeight = completedCount * 15; // Estimación: 15kg por recolección completada
+  const totalCO2 = totalWeight * 0.28; // Estimación: 0.28kg CO2 por kg reciclado
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -100,7 +63,7 @@ export function MobileHistory({ onNavigate }: MobileHistoryProps) {
           <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center">
             <Package className="w-6 h-6 text-white mx-auto mb-2" />
             <p className="text-white text-sm">Recolecciones</p>
-            <p className="text-white">{historyData.length}</p>
+            <p className="text-white">{solicitudes.length}</p>
           </div>
           <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center">
             <TrendingUp className="w-6 h-6 text-white mx-auto mb-2" />
@@ -136,11 +99,10 @@ export function MobileHistory({ onNavigate }: MobileHistoryProps) {
                       setSelectedFilter(filter);
                       setFilterOpen(false);
                     }}
-                    className={`px-3 py-2 rounded-lg text-sm ${
-                      selectedFilter === filter
+                    className={`px-3 py-2 rounded-lg text-sm ${selectedFilter === filter
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-700'
-                    }`}
+                      }`}
                   >
                     {filter === 'all' ? 'Todos' : filter}
                   </button>
@@ -151,76 +113,105 @@ export function MobileHistory({ onNavigate }: MobileHistoryProps) {
         </div>
 
         {/* Lista de recolecciones */}
-        <div className="space-y-4">
-          {historyData
-            .filter(item => selectedFilter === 'all' || item.type === selectedFilter)
-            .map(item => (
-              <div key={item.id} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="text-4xl">{item.icon}</div>
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="text-gray-900 mb-1">{item.type}</h4>
-                        <div className="flex items-center gap-2 text-gray-600 text-sm">
-                          <Calendar className="w-4 h-4" />
-                          <span>{item.date} • {item.time}</span>
+        {loading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Cargando historial...</p>
+          </div>
+        ) : filteredSolicitudes.length === 0 ? (
+          <div className="text-center py-12">
+            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No hay solicitudes en el historial</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredSolicitudes.map(item => {
+              const tipoDesc = item.tipo_residuo?.descripcion || 'Residuo';
+              const icon = tipoIcons[tipoDesc] || '📦';
+              const estimatedWeight = item.estado === 'completed' ? 15 : 0;
+              const estimatedCO2 = estimatedWeight * 0.28;
+
+              return (
+                <div key={item.id} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
+                  <div className="flex items-start gap-4">
+                    <div className="text-4xl">{icon}</div>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="text-gray-900 mb-1">{tipoDesc}</h4>
+                          <div className="flex items-center gap-2 text-gray-600 text-sm">
+                            <Calendar className="w-4 h-4" />
+                            <span>{new Date(item.fecha_solicitada).toLocaleDateString()}</span>
+                          </div>
                         </div>
+                        <span className={`px-3 py-1 rounded-full text-xs ${item.estado === 'completed' ? 'bg-green-100 text-green-700' :
+                            item.estado === 'approved' ? 'bg-blue-100 text-blue-700' :
+                              item.estado === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                'bg-yellow-100 text-yellow-700'
+                          }`}>
+                          {item.estado === 'completed' ? 'Completado' :
+                            item.estado === 'approved' ? 'Aprobado' :
+                              item.estado === 'cancelled' ? 'Cancelado' :
+                                'Pendiente'}
+                        </span>
                       </div>
-                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
-                        {item.status}
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div className="bg-blue-50 rounded-lg p-3">
-                        <p className="text-blue-700 text-xs mb-1">Peso recolectado</p>
-                        <p className="text-blue-900">{item.weight}</p>
-                      </div>
-                      <div className="bg-green-50 rounded-lg p-3">
-                        <p className="text-green-700 text-xs mb-1">CO₂ evitado</p>
-                        <p className="text-green-900">{item.co2Saved}</p>
-                      </div>
-                    </div>
+                      {item.estado === 'completed' && (
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className="bg-blue-50 rounded-lg p-3">
+                            <p className="text-blue-700 text-xs mb-1">Peso estimado</p>
+                            <p className="text-blue-900">{estimatedWeight} kg</p>
+                          </div>
+                          <div className="bg-green-50 rounded-lg p-3">
+                            <p className="text-green-700 text-xs mb-1">CO₂ evitado</p>
+                            <p className="text-green-900">{estimatedCO2.toFixed(1)} kg</p>
+                          </div>
+                        </div>
+                      )}
 
-                    <div className="flex items-center gap-2 text-gray-600 text-sm">
-                      <MapPin className="w-4 h-4" />
-                      <span>{item.address}</span>
+                      <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <MapPin className="w-4 h-4" />
+                        <span className="truncate">{item.direccion}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Impacto total */}
-        <div className="mt-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-6 border border-green-200">
-          <h4 className="text-gray-900 mb-4">Tu Impacto Ambiental</h4>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">Total reciclado</span>
-              <span className="text-gray-900">{totalWeight} kg</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">CO₂ evitado</span>
-              <span className="text-green-700">{totalCO2.toFixed(1)} kg</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700">Equivalente a</span>
-              <span className="text-blue-700">{Math.round(totalCO2 / 22)} árboles plantados</span>
+        {solicitudes.length > 0 && (
+          <div className="mt-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl p-6 border border-green-200">
+            <h4 className="text-gray-900 mb-4">Tu Impacto Ambiental</h4>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Total reciclado</span>
+                <span className="text-gray-900">{totalWeight} kg</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">CO₂ evitado</span>
+                <span className="text-green-700">{totalCO2.toFixed(1)} kg</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700">Equivalente a</span>
+                <span className="text-blue-700">{Math.round(totalCO2 / 22)} árboles plantados</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Mensaje motivacional */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-600 text-sm">
-            🌱 ¡Excelente trabajo! Has reciclado {totalWeight} kg de materiales.
-          </p>
-          <p className="text-gray-600 text-sm mt-1">
-            Sigue así y ayuda a construir un futuro más sostenible.
-          </p>
-        </div>
+        {completedCount > 0 && (
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              🌱 ¡Excelente trabajo! Has reciclado {totalWeight} kg de materiales.
+            </p>
+            <p className="text-gray-600 text-sm mt-1">
+              Sigue así y ayuda a construir un futuro más sostenible.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Navigation */}

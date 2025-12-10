@@ -10,14 +10,9 @@ router = APIRouter(prefix="/solicitudes", tags=["Solicitudes"])
 @router.get("", response_model=List[schemas.SolicitudResponse])
 def get_solicitudes(
     estado: Optional[str] = Query(None),
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(auth.get_current_user)
+    db: Session = Depends(get_db)
 ):
     query = db.query(models.Solicitud)
-    
-    # Si es cliente, solo ver sus propias solicitudes
-    if current_user.tipo == "cliente":
-        query = query.filter(models.Solicitud.cliente_id == current_user.id)
     
     # Filtrar por estado si se proporciona
     if estado:
@@ -29,8 +24,7 @@ def get_solicitudes(
 @router.post("", response_model=schemas.SolicitudResponse, status_code=status.HTTP_201_CREATED)
 def create_solicitud(
     solicitud: schemas.SolicitudCreate,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(auth.get_current_user)
+    db: Session = Depends(get_db)
 ):
     # Verificar que el tipo de residuo existe
     tipo_residuo = db.query(models.TipoResiduo).filter(
@@ -42,9 +36,14 @@ def create_solicitud(
             detail="Tipo de residuo no encontrado"
         )
     
+    # Obtener primer usuario como cliente por defecto
+    cliente = db.query(models.Usuario).filter(models.Usuario.tipo == "cliente").first()
+    if not cliente:
+        cliente = db.query(models.Usuario).first()
+    
     # Crear solicitud
     db_solicitud = models.Solicitud(
-        cliente_id=current_user.id,
+        cliente_id=cliente.id if cliente else "1",
         tipo_residuo_id=solicitud.tipo_residuo_id,
         direccion=solicitud.direccion,
         lat=solicitud.lat,

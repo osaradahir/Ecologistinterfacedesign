@@ -1,28 +1,51 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ArrowLeft, Package, MapPin, Calendar, Check } from 'lucide-react';
+import { solicitudesService } from '../../services/solicitudes.service';
+import type { SolicitudCreate } from '../../types';
 
 interface MobileCreateRequestProps {
   onNavigate: (view: string) => void;
 }
 
 const wasteTypes = [
-  { id: 'plastic', name: 'Plástico', icon: '♻️', color: 'blue' },
-  { id: 'paper', name: 'Papel', icon: '📄', color: 'yellow' },
-  { id: 'cardboard', name: 'Cartón', icon: '📦', color: 'orange' },
-  { id: 'glass', name: 'Vidrio', icon: '🍾', color: 'green' },
-  { id: 'organic', name: 'Orgánico', icon: '🌿', color: 'green' },
-  { id: 'metal', name: 'Metal', icon: '🔩', color: 'gray' },
+  { id: 1, name: 'Plástico', icon: '♻️', color: 'blue' },
+  { id: 2, name: 'Papel', icon: '📄', color: 'yellow' },
+  { id: 3, name: 'Cartón', icon: '📦', color: 'orange' },
+  { id: 4, name: 'Vidrio', icon: '🍾', color: 'green' },
+  { id: 5, name: 'Orgánico', icon: '🌿', color: 'green' },
 ];
 
 export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
   const [step, setStep] = useState(1);
-  const [selectedType, setSelectedType] = useState('');
+  const [selectedType, setSelectedType] = useState<number>(0);
   const [address, setAddress] = useState('');
-  const [date, setDate] = useState('');
-  const [notes, setNotes] = useState('');
+  const [lat, setLat] = useState(19.4326);
+  const [lng, setLng] = useState(-99.1332);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    setStep(4);
+  const handleSubmit = async () => {
+    if (!selectedType || !address) return;
+
+    setLoading(true);
+    setError(null);
+
+    const solicitud: SolicitudCreate = {
+      tipo_residuo_id: selectedType,
+      direccion: address,
+      lat,
+      lng
+    };
+
+    try {
+      await solicitudesService.createSolicitud(solicitud);
+      setStep(4);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al crear la solicitud');
+      setStep(2); // Volver al paso 2 para mostrar el error
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getColorClass = (color: string) => {
@@ -31,9 +54,8 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
       yellow: 'bg-yellow-100 border-yellow-300 text-yellow-700',
       orange: 'bg-orange-100 border-orange-300 text-orange-700',
       green: 'bg-green-100 border-green-300 text-green-700',
-      gray: 'bg-gray-100 border-gray-300 text-gray-700',
     };
-    return colors[color] || colors.gray;
+    return colors[color] || colors.green;
   };
 
   const getSelectedColorClass = (color: string) => {
@@ -42,9 +64,8 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
       yellow: 'bg-yellow-500 border-yellow-600 text-white',
       orange: 'bg-orange-500 border-orange-600 text-white',
       green: 'bg-green-500 border-green-600 text-white',
-      gray: 'bg-gray-500 border-gray-600 text-white',
     };
-    return colors[color] || colors.gray;
+    return colors[color] || colors.green;
   };
 
   return (
@@ -66,9 +87,8 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
           {[1, 2, 3].map(s => (
             <div
               key={s}
-              className={`h-1.5 flex-1 rounded-full transition-all ${
-                s <= step ? 'bg-white' : 'bg-white/30'
-              }`}
+              className={`h-1.5 flex-1 rounded-full transition-all ${s <= step ? 'bg-white' : 'bg-white/30'
+                }`}
             />
           ))}
         </div>
@@ -90,11 +110,10 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
                   <button
                     key={type.id}
                     onClick={() => setSelectedType(type.id)}
-                    className={`p-6 rounded-2xl border-2 transition-all ${
-                      isSelected 
+                    className={`p-6 rounded-2xl border-2 transition-all ${isSelected
                         ? getSelectedColorClass(type.color)
                         : getColorClass(type.color)
-                    }`}
+                      }`}
                   >
                     <div className="text-4xl mb-3">{type.icon}</div>
                     <p className={`${isSelected ? 'text-white' : ''}`}>{type.name}</p>
@@ -113,13 +132,19 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
           </div>
         )}
 
-        {/* Step 2: Dirección y fecha */}
+        {/* Step 2: Dirección */}
         {step === 2 && (
           <div>
             <div className="mb-6">
               <h3 className="text-gray-900 mb-2">Detalles de recolección</h3>
-              <p className="text-gray-600 text-sm">Ingresa la dirección y fecha</p>
+              <p className="text-gray-600 text-sm">Ingresa la dirección</p>
             </div>
+
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
+                <p className="text-red-700 text-sm">{error}</p>
+              </div>
+            )}
 
             <div className="space-y-4 mb-6">
               <div>
@@ -132,32 +157,32 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="Ingresa tu dirección"
                     className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                    required
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-gray-700 mb-2">Fecha preferida</label>
-                <div className="relative">
-                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-gray-700 mb-2 text-sm">Latitud</label>
                   <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                    type="number"
+                    step="any"
+                    value={lat}
+                    onChange={(e) => setLat(parseFloat(e.target.value))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-gray-700 mb-2">Notas adicionales (opcional)</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Ej: Material en bolsas verdes, entrada por puerta lateral..."
-                  rows={4}
-                  className="w-full px-4 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
+                <div>
+                  <label className="block text-gray-700 mb-2 text-sm">Longitud</label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={lng}
+                    onChange={(e) => setLng(parseFloat(e.target.value))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -170,7 +195,7 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
               </button>
               <button
                 onClick={() => setStep(3)}
-                disabled={!address || !date}
+                disabled={!address}
                 className="flex-1 py-4 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-2xl disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
               >
                 Continuar
@@ -179,31 +204,12 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
           </div>
         )}
 
-        {/* Step 3: Confirmar ubicación */}
+        {/* Step 3: Confirmar */}
         {step === 3 && (
           <div>
             <div className="mb-6">
-              <h3 className="text-gray-900 mb-2">Confirma la ubicación</h3>
-              <p className="text-gray-600 text-sm">Verifica que el marcador esté en el lugar correcto</p>
-            </div>
-
-            {/* Mapa simulado */}
-            <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-2xl h-80 relative overflow-hidden mb-6 border border-gray-200">
-              <div className="absolute inset-0 opacity-20">
-                <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <pattern id="grid-mobile" width="30" height="30" patternUnits="userSpaceOnUse">
-                      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#44AA55" strokeWidth="0.5"/>
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#grid-mobile)" />
-                </svg>
-              </div>
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                <div className="bg-red-500 rounded-full p-4 shadow-2xl animate-bounce">
-                  <MapPin className="w-8 h-8 text-white" />
-                </div>
-              </div>
+              <h3 className="text-gray-900 mb-2">Confirma tu solicitud</h3>
+              <p className="text-gray-600 text-sm">Verifica que los datos sean correctos</p>
             </div>
 
             {/* Resumen */}
@@ -221,8 +227,8 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
                   <span className="text-gray-900 text-right max-w-[60%]">{address}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Fecha:</span>
-                  <span className="text-gray-900">{date}</span>
+                  <span className="text-gray-600">Coordenadas:</span>
+                  <span className="text-gray-900 text-xs">{lat.toFixed(4)}, {lng.toFixed(4)}</span>
                 </div>
               </div>
             </div>
@@ -231,14 +237,16 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
               <button
                 onClick={() => setStep(2)}
                 className="flex-1 py-4 bg-gray-200 text-gray-700 rounded-2xl"
+                disabled={loading}
               >
                 Atrás
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex-1 py-4 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-2xl shadow-lg"
+                className="flex-1 py-4 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-2xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
               >
-                Confirmar
+                {loading ? 'Creando...' : 'Confirmar'}
               </button>
             </div>
           </div>
@@ -256,14 +264,8 @@ export function MobileCreateRequest({ onNavigate }: MobileCreateRequestProps) {
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => onNavigate('tracking')}
-                className="w-full py-4 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-2xl shadow-lg"
-              >
-                Ver Seguimiento
-              </button>
-              <button
                 onClick={() => onNavigate('home')}
-                className="w-full py-4 bg-gray-200 text-gray-700 rounded-2xl"
+                className="w-full py-4 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-2xl shadow-lg"
               >
                 Volver al Inicio
               </button>

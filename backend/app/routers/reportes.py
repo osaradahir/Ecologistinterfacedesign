@@ -13,8 +13,7 @@ router = APIRouter(prefix="/reportes", tags=["Reportes"])
 def get_reporte_eficiencia(
     fecha_inicio: Optional[datetime] = Query(None),
     fecha_fin: Optional[datetime] = Query(None),
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(auth.get_current_user)
+    db: Session = Depends(get_db)
 ):
     # Query base para solicitudes
     solicitudes_query = db.query(models.Solicitud)

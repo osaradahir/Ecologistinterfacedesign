@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Mail, Lock, Recycle, Leaf } from 'lucide-react';
+import { authService } from '../../services/auth.service';
 
 interface MobileLoginProps {
   onLogin: () => void;
@@ -8,10 +9,22 @@ interface MobileLoginProps {
 export function MobileLogin({ onLogin }: MobileLoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    setLoading(true);
+    setError(null);
+
+    try {
+      await authService.login({ email, password });
+      onLogin();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -26,6 +39,16 @@ export function MobileLogin({ onLogin }: MobileLoginProps) {
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl p-8">
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-2xl">
+              <p className="text-red-700 text-sm font-semibold mb-2">❌ Error al iniciar sesión</p>
+              <p className="text-red-600 text-xs">{error}</p>
+              <p className="text-red-600 text-xs mt-2">
+                Verifica que uses: admin@ecologist.com / admin123
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-gray-700 mb-2">Email</label>
@@ -37,6 +60,8 @@ export function MobileLogin({ onLogin }: MobileLoginProps) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@email.com"
                   className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+                  required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -51,15 +76,18 @@ export function MobileLogin({ onLogin }: MobileLoginProps) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-lg"
+                  required
+                  disabled={loading}
                 />
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 rounded-2xl hover:from-green-600 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl text-lg"
+              className="w-full bg-gradient-to-r from-green-500 to-blue-500 text-white py-4 rounded-2xl hover:from-green-600 hover:to-blue-600 transition-all shadow-lg hover:shadow-xl text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
             >
-              Iniciar Sesión
+              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </button>
           </form>
 
@@ -85,7 +113,7 @@ export function MobileLogin({ onLogin }: MobileLoginProps) {
         </div>
 
         <p className="text-center text-white/80 mt-8 text-sm">
-          Demo - Use cualquier credencial
+          Credenciales: admin@ecologist.com / admin123
         </p>
       </div>
     </div>

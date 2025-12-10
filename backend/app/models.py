@@ -59,7 +59,12 @@ class Vehiculo(Base):
     
     id = Column(String, primary_key=True, default=generate_uuid)
     placa = Column(String, unique=True, nullable=False)
+    tipo = Column(String, nullable=False)  # 'Camión Grande', 'Camión Mediano', 'Camioneta'
     capacidad = Column(Integer, nullable=False)
+    carga_actual = Column(Integer, default=0)  # en kg
+    combustible = Column(Integer, default=100)  # porcentaje 0-100
+    estado = Column(String, default="Disponible")  # 'Disponible', 'En ruta', 'Mantenimiento'
+    conductor = Column(String, nullable=True)  # Nombre del conductor
     
     # Relaciones
     rutas = relationship("Ruta", back_populates="vehiculo")

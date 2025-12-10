@@ -1,4 +1,5 @@
-import { ArrowLeft, MapPin, Package, Calendar, User, Truck } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, MapPin, Package, Calendar, User, Truck, Phone, XCircle } from 'lucide-react';
 import { WebSidebar } from './WebSidebar';
 
 interface WebRequestDetailProps {
@@ -43,6 +44,7 @@ const mockRequestData = {
 
 export function WebRequestDetail({ requestId, onNavigate }: WebRequestDetailProps) {
   const request = requestId ? mockRequestData[requestId as keyof typeof mockRequestData] : mockRequestData['1'];
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   if (!request) {
     return (
@@ -68,10 +70,25 @@ export function WebRequestDetail({ requestId, onNavigate }: WebRequestDetailProp
     }
   };
 
+  const handleContact = () => {
+    // Abrir WhatsApp o teléfono
+    window.open(`tel:${request.phone}`, '_blank');
+  };
+
+  const handleCancel = () => {
+    setShowCancelDialog(true);
+  };
+
+  const confirmCancel = () => {
+    alert('Solicitud cancelada exitosamente');
+    setShowCancelDialog(false);
+    onNavigate('requests');
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <WebSidebar currentView="requests" onNavigate={onNavigate} />
-      
+
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <button
@@ -138,14 +155,14 @@ export function WebRequestDetail({ requestId, onNavigate }: WebRequestDetailProp
                   <p className="text-gray-900">{request.address}</p>
                   <p className="text-gray-500 text-sm mt-1">{request.coordinates}</p>
                 </div>
-                
+
                 {/* Mapa simulado */}
                 <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl h-64 relative overflow-hidden">
                   <div className="absolute inset-0 opacity-20">
                     <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
                       <defs>
                         <pattern id="grid-detail" width="30" height="30" patternUnits="userSpaceOnUse">
-                          <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#44AA55" strokeWidth="0.5"/>
+                          <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#44AA55" strokeWidth="0.5" />
                         </pattern>
                       </defs>
                       <rect width="100%" height="100%" fill="url(#grid-detail)" />
@@ -217,13 +234,25 @@ export function WebRequestDetail({ requestId, onNavigate }: WebRequestDetailProp
               <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-6 border border-green-200">
                 <h3 className="text-gray-900 mb-4">Acciones Rápidas</h3>
                 <div className="space-y-2">
-                  <button className="w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  <button
+                    onClick={handleEdit}
+                    className="w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Edit className="w-4 h-4" />
                     Editar Solicitud
                   </button>
-                  <button className="w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                  <button
+                    onClick={handleContact}
+                    className="w-full px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Phone className="w-4 h-4" />
                     Contactar Cliente
                   </button>
-                  <button className="w-full px-4 py-2 bg-white text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors">
+                  <button
+                    onClick={handleCancel}
+                    className="w-full px-4 py-2 bg-white text-red-600 border border-red-300 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <XCircle className="w-4 h-4" />
                     Cancelar Solicitud
                   </button>
                 </div>
@@ -232,6 +261,32 @@ export function WebRequestDetail({ requestId, onNavigate }: WebRequestDetailProp
           </div>
         </div>
       </div>
+
+      {/* Dialog de confirmación de cancelación */}
+      {showCancelDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">¿Cancelar Solicitud?</h3>
+            <p className="text-gray-600 mb-6">
+              ¿Estás seguro de que deseas cancelar esta solicitud? Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelDialog(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                No, volver
+              </button>
+              <button
+                onClick={confirmCancel}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Sí, cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,16 +1,36 @@
+import React, { useState, useEffect } from 'react';
 import { Plus, Package, Clock, History, MapPin, TrendingUp, Recycle } from 'lucide-react';
+import { solicitudesService } from '../../services/solicitudes.service';
+import type { Solicitud } from '../../types';
 
 interface MobileHomeProps {
   onNavigate: (view: string) => void;
 }
 
-const recentRequests = [
-  { id: '1', type: 'Plástico', date: '2025-12-09', status: 'Completado' },
-  { id: '2', type: 'Papel', date: '2025-12-08', status: 'Completado' },
-  { id: '3', type: 'Cartón', date: '2025-12-06', status: 'Completado' },
-];
-
 export function MobileHome({ onNavigate }: MobileHomeProps) {
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSolicitudes();
+  }, []);
+
+  const loadSolicitudes = async () => {
+    try {
+      const data = await solicitudesService.getSolicitudes();
+      setSolicitudes(data);
+    } catch (error) {
+      console.error('Error loading solicitudes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const recentRequests = solicitudes.slice(0, 3);
+  const completedCount = solicitudes.filter(s => s.estado === 'completed').length;
+  const totalKilos = completedCount * 15; // Estimación
+  const co2Saved = Math.round(totalKilos * 0.28);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* Header */}
@@ -18,7 +38,7 @@ export function MobileHome({ onNavigate }: MobileHomeProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-green-100 text-sm">Bienvenido de vuelta</p>
-            <h2 className="text-white">Juan Pérez</h2>
+            <h2 className="text-white">Usuario</h2>
           </div>
           <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
             <Recycle className="w-6 h-6 text-green-600" />
@@ -30,17 +50,17 @@ export function MobileHome({ onNavigate }: MobileHomeProps) {
           <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center">
             <Package className="w-6 h-6 text-white mx-auto mb-2" />
             <p className="text-white text-sm">Recolecciones</p>
-            <p className="text-white">24</p>
+            <p className="text-white">{solicitudes.length}</p>
           </div>
           <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center">
             <TrendingUp className="w-6 h-6 text-white mx-auto mb-2" />
             <p className="text-white text-sm">Kilos</p>
-            <p className="text-white">156 kg</p>
+            <p className="text-white">{totalKilos} kg</p>
           </div>
           <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center">
             <Recycle className="w-6 h-6 text-white mx-auto mb-2" />
             <p className="text-white text-sm">CO₂ Evitado</p>
-            <p className="text-white">42 kg</p>
+            <p className="text-white">{co2Saved} kg</p>
           </div>
         </div>
       </div>
@@ -56,35 +76,33 @@ export function MobileHome({ onNavigate }: MobileHomeProps) {
         </button>
 
         {/* Próxima recolección */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-              <Clock className="w-5 h-5 text-blue-600" />
-            </div>
-            <h3 className="text-gray-900">Próxima Recolección</h3>
-          </div>
-          <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-blue-900 mb-1">Cartón y Papel</p>
-                <p className="text-blue-700 text-sm">Miércoles, 11 Diciembre</p>
+        {solicitudes.find(s => s.estado === 'approved') && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Clock className="w-5 h-5 text-blue-600" />
               </div>
-              <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm">
-                Programado
-              </span>
+              <h3 className="text-gray-900">Próxima Recolección</h3>
             </div>
-            <div className="flex items-center gap-2 text-blue-700 text-sm">
-              <MapPin className="w-4 h-4" />
-              <span>Av. Principal 123, Centro</span>
+            <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <p className="text-blue-900 mb-1">Recolección Programada</p>
+                  <p className="text-blue-700 text-sm">
+                    {new Date(solicitudes.find(s => s.estado === 'approved')!.fecha_solicitada).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className="bg-blue-200 text-blue-800 px-3 py-1 rounded-full text-sm">
+                  Programado
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-blue-700 text-sm">
+                <MapPin className="w-4 h-4" />
+                <span>{solicitudes.find(s => s.estado === 'approved')!.direccion}</span>
+              </div>
             </div>
-            <button
-              onClick={() => onNavigate('tracking')}
-              className="w-full mt-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Ver en Mapa
-            </button>
           </div>
-        </div>
+        )}
 
         {/* Historial reciente */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
@@ -102,24 +120,38 @@ export function MobileHome({ onNavigate }: MobileHomeProps) {
               Ver todo
             </button>
           </div>
-          <div className="space-y-3">
-            {recentRequests.map(request => (
-              <div key={request.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Package className="w-5 h-5 text-green-600" />
+
+          {loading ? (
+            <p className="text-gray-500 text-center py-4">Cargando...</p>
+          ) : recentRequests.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No hay solicitudes aún</p>
+          ) : (
+            <div className="space-y-3">
+              {recentRequests.map(request => (
+                <div key={request.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                      <Package className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-gray-900">{request.tipo_residuo?.descripcion || 'Residuo'}</p>
+                      <p className="text-gray-600 text-sm">
+                        {new Date(request.fecha_solicitada).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-900">{request.type}</p>
-                    <p className="text-gray-600 text-sm">{request.date}</p>
-                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs ${request.estado === 'completed' ? 'bg-green-100 text-green-700' :
+                      request.estado === 'approved' ? 'bg-blue-100 text-blue-700' :
+                        'bg-yellow-100 text-yellow-700'
+                    }`}>
+                    {request.estado === 'completed' ? 'Completado' :
+                      request.estado === 'approved' ? 'Aprobado' :
+                        'Pendiente'}
+                  </span>
                 </div>
-                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs">
-                  {request.status}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

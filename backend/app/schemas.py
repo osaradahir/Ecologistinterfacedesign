@@ -65,14 +65,27 @@ class SolicitudResponse(SolicitudBase):
 # ============ Vehiculo Schemas ============
 class VehiculoBase(BaseModel):
     placa: str
+    tipo: str  # 'Camión Grande', 'Camión Mediano', 'Camioneta'
     capacidad: int
+    carga_actual: Optional[int] = 0
+    combustible: Optional[int] = 100
+    estado: Optional[str] = "Disponible"
+    conductor: Optional[str] = None
 
-class VehiculoCreate(VehiculoBase):
-    pass
+class VehiculoCreate(BaseModel):
+    placa: str
+    tipo: str
+    capacidad: int
+    conductor: Optional[str] = None
 
 class VehiculoUpdate(BaseModel):
     placa: Optional[str] = None
+    tipo: Optional[str] = None
     capacidad: Optional[int] = None
+    carga_actual: Optional[int] = None
+    combustible: Optional[int] = None
+    estado: Optional[str] = None
+    conductor: Optional[str] = None
 
 class VehiculoResponse(VehiculoBase):
     id: str

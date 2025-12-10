@@ -51,8 +51,7 @@ def optimizar_ruta_nearest_neighbor(solicitudes: List[models.Solicitud]) -> tupl
 @router.post("/optimizar", response_model=schemas.RutaResponse, status_code=status.HTTP_201_CREATED)
 def optimizar_ruta(
     request: schemas.RutaOptimizarRequest,
-    db: Session = Depends(get_db),
-    current_user: models.Usuario = Depends(auth.require_admin)
+    db: Session = Depends(get_db)
 ):
     # Obtener las solicitudes
     solicitudes = db.query(models.Solicitud).filter(

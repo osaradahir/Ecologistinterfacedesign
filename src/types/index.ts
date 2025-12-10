@@ -77,7 +77,9 @@ export interface SolicitudCreate {
 
 export interface VehiculoCreate {
     placa: string;
+    tipo: string;
     capacidad: number;
+    conductor?: string;
 }
 
 export interface RutaOptimizarRequest {

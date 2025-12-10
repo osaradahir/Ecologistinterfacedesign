@@ -1,5 +1,8 @@
-import { Truck, Plus, Battery, Gauge, Package } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Search, Truck, X, Battery, Gauge, Package } from 'lucide-react';
 import { WebSidebar } from './WebSidebar';
+import { vehiculosService } from '../../services/vehiculos.service';
+import type { VehiculoCreate } from '../../types';
 
 interface WebVehiclesProps {
   onNavigate: (view: string) => void;
@@ -75,6 +78,40 @@ const vehicles = [
 ];
 
 export function WebVehicles({ onNavigate }: WebVehiclesProps) {
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  // Form state
+  const [formData, setFormData] = useState<VehiculoCreate>({
+    placa: '',
+    tipo: 'Camión Grande',
+    capacidad: 0,
+    conductor: ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      await vehiculosService.createVehiculo(formData);
+      setSuccess(true);
+      setTimeout(() => {
+        setShowAddDialog(false);
+        setSuccess(false);
+        setFormData({ placa: '', tipo: 'Camión Grande', capacidad: 0, conductor: '' });
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Error al crear el vehículo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'En ruta':
@@ -103,12 +140,15 @@ export function WebVehicles({ onNavigate }: WebVehiclesProps) {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <WebSidebar currentView="vehicles" onNavigate={onNavigate} />
-      
+
       <div className="flex-1 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-gray-900">Gestión de Vehículos</h1>
-            <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:from-green-600 hover:to-blue-600 transition-all shadow-lg">
+            <button
+              onClick={() => setShowAddDialog(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-xl hover:from-green-600 hover:to-blue-600 transition-all shadow-lg"
+            >
               <Plus className="w-5 h-5" />
               Agregar Vehículo
             </button>
@@ -191,23 +231,22 @@ export function WebVehicles({ onNavigate }: WebVehiclesProps) {
                               <span className="text-gray-900 text-sm">{vehicle.currentLoad}</span>
                             </div>
                             <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full ${
-                                  loadPercentage >= 80 
-                                    ? 'bg-red-500' 
-                                    : loadPercentage >= 60 
-                                    ? 'bg-yellow-500' 
+                              <div
+                                className={`h-full ${loadPercentage >= 80
+                                  ? 'bg-red-500'
+                                  : loadPercentage >= 60
+                                    ? 'bg-yellow-500'
                                     : 'bg-green-500'
-                                }`}
+                                  }`}
                                 style={{ width: `${loadPercentage}%` }}
-                              ></div>
+                              />
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Battery className={`w-4 h-4 ${getFuelColor(vehicle.fuel)}`} />
-                            <span className={`${getFuelColor(vehicle.fuel)}`}>{vehicle.fuel}%</span>
+                            <span className={`text-sm ${getFuelColor(vehicle.fuel)}`}>{vehicle.fuel}%</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -215,7 +254,7 @@ export function WebVehicles({ onNavigate }: WebVehiclesProps) {
                             {vehicle.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-gray-900">{vehicle.driver}</td>
+                        <td className="px-6 py-4 text-gray-600">{vehicle.driver}</td>
                       </tr>
                     );
                   })}
@@ -224,33 +263,158 @@ export function WebVehicles({ onNavigate }: WebVehiclesProps) {
             </div>
           </div>
 
-          {/* Alertas */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-yellow-50 rounded-xl p-6 border border-yellow-200">
-              <div className="flex items-start gap-3">
-                <Gauge className="w-5 h-5 text-yellow-600 mt-1" />
+          {/* Estadísticas adicionales */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-4">
+                <Gauge className="w-10 h-10 text-blue-600" />
                 <div>
-                  <h4 className="text-yellow-900 mb-2">Combustible Bajo</h4>
-                  <p className="text-yellow-700 text-sm">
-                    El vehículo VEH-005 requiere reabastecimiento de combustible (30%)
-                  </p>
+                  <p className="text-gray-600 text-sm">Promedio de Combustible</p>
+                  <p className="text-gray-900 text-xl">60%</p>
                 </div>
               </div>
             </div>
-            <div className="bg-red-50 rounded-xl p-6 border border-red-200">
-              <div className="flex items-start gap-3">
-                <Package className="w-5 h-5 text-red-600 mt-1" />
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-4">
+                <Package className="w-10 h-10 text-green-600" />
                 <div>
-                  <h4 className="text-red-900 mb-2">Capacidad Crítica</h4>
-                  <p className="text-red-700 text-sm">
-                    El vehículo VEH-006 está al 84% de su capacidad máxima
-                  </p>
+                  <p className="text-gray-600 text-sm">Capacidad Total</p>
+                  <p className="text-gray-900 text-xl">11,300 kg</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center gap-4">
+                <Truck className="w-10 h-10 text-purple-600" />
+                <div>
+                  <p className="text-gray-600 text-sm">Carga Actual Total</p>
+                  <p className="text-gray-900 text-xl">5,550 kg</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Dialog para agregar vehículo */}
+      {showAddDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold text-gray-900">Agregar Nuevo Vehículo</h2>
+              <button
+                onClick={() => {
+                  setShowAddDialog(false);
+                  setError(null);
+                  setSuccess(false);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {success && (
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-green-700">✓ Vehículo agregado exitosamente</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700">{error}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Placa del Vehículo
+                </label>
+                <input
+                  type="text"
+                  value={formData.placa}
+                  onChange={(e) => setFormData({ ...formData, placa: e.target.value.toUpperCase() })}
+                  placeholder="Ej: ABC-123"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                  pattern="[A-Z]{3}-[0-9]{3}"
+                  title="Formato: ABC-123"
+                />
+                <p className="text-xs text-gray-500 mt-1">Formato: 3 letras - 3 números (Ej: ABC-123)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de Vehículo
+                </label>
+                <select
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                >
+                  <option value="Camión Grande">Camión Grande</option>
+                  <option value="Camión Mediano">Camión Mediano</option>
+                  <option value="Camioneta">Camioneta</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Capacidad (kg)
+                </label>
+                <input
+                  type="number"
+                  value={formData.capacidad || ''}
+                  onChange={(e) => setFormData({ ...formData, capacidad: parseInt(e.target.value) || 0 })}
+                  placeholder="Ej: 2500"
+                  min="1"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">Capacidad máxima de carga en kilogramos</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Conductor (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.conductor || ''}
+                  onChange={(e) => setFormData({ ...formData, conductor: e.target.value })}
+                  placeholder="Ej: Juan Pérez"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Nombre del conductor asignado</p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddDialog(false);
+                    setError(null);
+                    setSuccess(false);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg hover:from-green-600 hover:to-blue-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  {loading ? 'Agregando...' : 'Agregar Vehículo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
